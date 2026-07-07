@@ -1,18 +1,22 @@
 package main
 
 import (
-	"flag"
+	"log"
 	"os"
 )
 
 func main() {
-	var hostname string
-	flag.StringVar(&hostname, "hostname", "nanobox", "Sets the hostname of the container")
-	flag.Parse()
 
-	if os.Getenv("NANOBOX_CHILD") == "1" {
-		runChild(hostname, flag.Args())
-		return
+	if len(os.Args) < 2 {
+		log.Fatalln("Usage: nanobox run [-hostname <name>] <command>")
 	}
-	runParent(hostname, flag.Args())
+
+	switch os.Args[1] {
+	case "run":
+		runParent()
+	case "child":
+		runChild()
+	default:
+		log.Fatalln("Unknown command")
+	}
 }
