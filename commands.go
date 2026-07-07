@@ -6,6 +6,8 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"path/filepath"
+	"strconv"
 	"syscall"
 
 	"golang.org/x/sys/unix"
@@ -29,6 +31,26 @@ func runParent(hostname string, args []string) {
 	if err := cmd.Start(); err != nil {
 		log.Fatalf("Failed to start child process: %v\n", err)
 	}
+
+	cGroupPath := "/sys/fs/cgroup/nanobox"
+
+	if err := os.MkdirAll(cGroupPath, 0755); err != nil {
+		log.Fatalf("[Parent] Failed to create cgroup dir: %v\n", err)
+	}
+
+	if err := os.WriteFile(filepath.Join(cGroupPath, "memory.max"), []byte("20971520"), 0644); err != nil {
+		log.Fatalf("[Parent] Failed to WriteFile memory.max: %v\n", err)
+	}
+
+	if err := os.WriteFile(filepath.Join(cGroupPath, "cgroup.procs"), []byte(strconv.Itoa(cmd.Process.Pid)), 0644); err != nil {
+		log.Fatalf("[Parent] Failed to WriteFile cgroup.procs: %v", err)
+	}
+
+	defer func() {
+		if err := os.Remove(cGroupPath); err != nil {
+			log.Fatalf("[Parent] Failed to cleanup: %v\n", err)
+		}
+	}()
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
